@@ -10,12 +10,17 @@ async fn main() -> std::io::Result<()> {
     let data_file =
         std::env::var("DATA_FILE").unwrap_or_else(|_| "codegang-datasource.json".to_string());
     let state = web::Data::new(AppState::new(data_file));
+    let sessions = web::Data::new(handlers::mcp::new_sessions());
 
     println!("Starting codegang-datasource on http://0.0.0.0:8080");
 
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
+            .app_data(sessions.clone())
+            // MCP SSE transport
+            .route("/sse", web::get().to(handlers::mcp::sse_handler))
+            .route("/message", web::post().to(handlers::mcp::message_handler))
             // Full datasource
             .route("/api/datasource", web::get().to(handlers::datasource::get))
             .route("/api/datasource", web::put().to(handlers::datasource::replace))
